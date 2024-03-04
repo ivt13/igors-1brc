@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "OneBillionRowChallenge": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\Igor\\source\\repos\\OneBillionRowChallenge\\1brc.data\\measurements-20.txt"
+    }
+  }
+}
