@@ -4,7 +4,9 @@ I will add other implementations later.
 
 Here's how to build the solution:
 
-dotnet publish --self-contained -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish --self-contained -f net6.0 -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true
+
+dotnet publish --self-contained -f net8.0 -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true
 
 Why Dotnet 6 when Dotnet 8 is avaliable? Because I want to see the performance difference between them.
 
