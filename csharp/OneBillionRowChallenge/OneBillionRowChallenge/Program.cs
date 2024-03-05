@@ -6,7 +6,7 @@
         {
             var filePath = args[0];
 
-            var result = new Dictionary<string, Stat>();
+            var result = new Dictionary<string, Stat>(StringComparer.Ordinal);
 
             using (var sr = new StreamReader(new FileStream(filePath,FileMode.Open)))
             {

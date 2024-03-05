@@ -1,5 +1,7 @@
 ﻿
 
+using System.Runtime.CompilerServices;
+
 namespace OneBillionRowChallenge
 {
     internal class Stat
@@ -9,6 +11,7 @@ namespace OneBillionRowChallenge
         public double Sum;
         public long Count;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(double value)
         {
             if(value < Min) Min = value;
@@ -17,6 +20,7 @@ namespace OneBillionRowChallenge
             ++Count;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double Average() => Sum / Count;
     }
 }
