@@ -10,4 +10,10 @@ dotnet publish --self-contained -f net8.0 -r linux-x64 /p:PublishSingleFile=true
 
 Why Dotnet 6 when Dotnet 8 is avaliable? Because I want to see the performance difference between them.
 
-All timing will be done on WSL Ubuntu 22.04
+All timing will be done on WSL Ubuntu 22.04 on AMD Ryzen 9 3900X 12 core.
+
+Results:
+
+|        Change        | net 6     | net 8     |
+|----------------------|---------- |-----------|
+| base implementation  | 3m16.860s | 2m22.885s |
