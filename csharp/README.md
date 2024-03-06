@@ -18,4 +18,5 @@ Results:
 |---------------------------------------------|---------- |-----------|
 | base implementation                         | 3m16.860s | 2m22.885s |
 | method inlining + StringComparer.Ordinal    | 3m15.854s | 2m19.295s |
+| memory-mapped file                          | 1m2.655s  | 0m47.862s |
 

@@ -1,4 +1,7 @@
-﻿namespace OneBillionRowChallenge
+﻿using System.IO.MemoryMappedFiles;
+using System.Text;
+
+namespace OneBillionRowChallenge
 {
     internal class Program
     {
@@ -8,41 +11,89 @@
 
             var result = new Dictionary<string, Stat>(StringComparer.Ordinal);
 
-            using (var sr = new StreamReader(new FileStream(filePath,FileMode.Open)))
+            using var mmap = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
+            using var view = mmap.CreateViewAccessor();
+
+
+            const int bufferSize = 512;
+            var buffer = new byte[bufferSize];
+            var bufferPos = 0;
+
+            const byte newLine = 10;
+            var i = 0;
+            while (true)
             {
-                string? line = null;
-                while (!string.IsNullOrEmpty(line = sr.ReadLine()))
+                try
                 {
-                    var indexOfDelimiter = line.IndexOf(';');
-                    var name = line.Substring(0,indexOfDelimiter);
-                    var tempStr = line.Substring(indexOfDelimiter + 1);
-
-                    var temp = double.Parse(tempStr);
-
-                    if (!result.TryGetValue(name, out var stat))
+                    var b = view.ReadByte(i);
+                    ++i;
+                    buffer[bufferPos] = b;
+                    if (b == newLine)
                     {
-                        stat = new Stat();
-                        result[name] = stat;
+                        HandleLine(buffer, bufferPos, result);
+                        bufferPos = 0;
+                        Array.Clear(buffer);
+                        continue;
                     }
 
-                    stat.Add(temp);
-
+                    ++bufferPos;
+                }
+                catch (ArgumentException)
+                {
+                    break;
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    break;
                 }
             }
 
-            var i = 0;
+            var j = 0;
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.Write("{");
             foreach (var kvp in result.OrderBy(x => x.Key))
             {
-                Console.Write($"{kvp.Key}={kvp.Value.Min}/{kvp.Value.Average()}/{kvp.Value.Max}");
-                if (i < result.Count - 1)
+                if (j < result.Count - 1)
                 {
-                    Console.Write(",");
+                    Console.Write($"{kvp.Key}={kvp.Value.Min}/{kvp.Value.Average()}/{kvp.Value.Max},");
                 }
-                ++i;
+                else
+                {
+                    Console.Write($"{kvp.Key}={kvp.Value.Min}/{kvp.Value.Average()}/{kvp.Value.Max}");
+                }
+                ++j;
             }
             Console.Write("}");
+        }
+
+        private static void HandleLine(byte[] buffer, int byteCount, Dictionary<string, Stat> result)
+        {
+            const byte delimiter = 59;
+            var indexOfDelimiter = 0;
+            
+            for (var i = 0; i < byteCount; ++i)
+            {
+                if (buffer[i] == delimiter)
+                {
+                    indexOfDelimiter = i;
+                    break;
+                }
+            }
+
+            var nextAfterDelimiter = indexOfDelimiter + 1;
+            
+            var name = Encoding.UTF8.GetString(buffer,0,indexOfDelimiter);
+            var tempStr = Encoding.UTF8.GetString(buffer, nextAfterDelimiter, byteCount - nextAfterDelimiter);
+
+            var temp = double.Parse(tempStr);
+
+            if (!result.TryGetValue(name, out var stat))
+            {
+                stat = new Stat();
+                result[name] = stat;
+            }
+
+            stat.Add(temp);
         }
     }
 }
