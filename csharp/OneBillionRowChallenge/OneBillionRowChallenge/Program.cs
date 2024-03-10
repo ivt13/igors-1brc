@@ -1,4 +1,7 @@
-﻿using System.IO.MemoryMappedFiles;
+﻿using System.Buffers;
+using System.Globalization;
+using System.IO.MemoryMappedFiles;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OneBillionRowChallenge
@@ -8,45 +11,48 @@ namespace OneBillionRowChallenge
         static void Main(string[] args)
         {
             var filePath = args[0];
+            var fileSize = new FileInfo(filePath).Length;
 
-            var result = new Dictionary<string, Stat>(StringComparer.Ordinal);
+            var result = new Dictionary<string, Stat>(500,StringComparer.Ordinal);
 
             using var mmap = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
-            using var view = mmap.CreateViewAccessor();
+            using var view = mmap.CreateViewStream(0,fileSize,MemoryMappedFileAccess.Read);
 
-
-            const int bufferSize = 512;
+            const int bufferSize = 1024*128;
             var buffer = new byte[bufferSize];
-            var bufferPos = 0;
+            
+            const byte newLine = 10; // \n
+            var bytesRead = 0;
 
-            const byte newLine = 10;
-            var i = 0;
-            while (true)
+            while ((bytesRead = view.Read(buffer,0,bufferSize)) > 0)
             {
-                try
+                var lineStart = 0;
+                var stop = false;
+                for (var bufferPos = 0; bufferPos < bytesRead; ++bufferPos)
                 {
-                    var b = view.ReadByte(i);
-                    ++i;
-                    buffer[bufferPos] = b;
-                    if (b == newLine)
+                    if (buffer[bufferPos] == newLine)
                     {
-                        HandleLine(buffer, bufferPos, result);
-                        bufferPos = 0;
-                        Array.Clear(buffer);
-                        continue;
+                        var line = new ReadOnlySpan<byte>(buffer, lineStart, bufferPos - lineStart);
+                        HandleLine(ref line, result);
+                        lineStart = bufferPos + 1;
                     }
 
-                    ++bufferPos;
+                    if (buffer[bufferPos] == 0)
+                    {
+                        stop = true;
+                        break;
+                    }
                 }
-                catch (ArgumentException)
+
+                if (stop)
                 {
                     break;
                 }
-                catch (IndexOutOfRangeException)
-                {
-                    break;
-                }
+
+                Array.Clear(buffer);
+                view.Position = view.Position - bytesRead + lineStart;
             }
+
 
             var j = 0;
             Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -55,23 +61,28 @@ namespace OneBillionRowChallenge
             {
                 if (j < result.Count - 1)
                 {
-                    Console.Write($"{kvp.Key}={kvp.Value.Min}/{kvp.Value.Average()}/{kvp.Value.Max},");
+                    Console.Write($"{kvp.Key}={kvp.Value.Min:0.#}/{kvp.Value.Average():0.#}/{kvp.Value.Max:0.#},");
                 }
                 else
                 {
-                    Console.Write($"{kvp.Key}={kvp.Value.Min}/{kvp.Value.Average()}/{kvp.Value.Max}");
+                    Console.Write($"{kvp.Key}={kvp.Value.Min:0.#}/{kvp.Value.Average():0.#}/{kvp.Value.Max:0.#}");
                 }
                 ++j;
             }
             Console.Write("}");
         }
 
-        private static void HandleLine(byte[] buffer, int byteCount, Dictionary<string, Stat> result)
+        private static void HandleLine(ref ReadOnlySpan<byte> buffer, Dictionary<string, Stat> result)
         {
-            const byte delimiter = 59;
+            if (buffer.IsEmpty)
+            {
+                return;
+            }
+
+            const byte delimiter = 59; // ;
             var indexOfDelimiter = 0;
-            
-            for (var i = 0; i < byteCount; ++i)
+
+            for (var i = 0; i < buffer.Length; ++i)
             {
                 if (buffer[i] == delimiter)
                 {
@@ -82,16 +93,18 @@ namespace OneBillionRowChallenge
 
             var nextAfterDelimiter = indexOfDelimiter + 1;
             
-            var name = Encoding.UTF8.GetString(buffer,0,indexOfDelimiter);
-            var tempStr = Encoding.UTF8.GetString(buffer, nextAfterDelimiter, byteCount - nextAfterDelimiter);
-
+            var name = Encoding.UTF8.GetString(buffer.Slice(0, indexOfDelimiter));
+            var tempSlice = buffer.Slice(nextAfterDelimiter);
+            
+#if NET8_0_OR_GREATER
+            var temp = double.Parse(tempSlice);
+#else
+            var tempStr = Encoding.UTF8.GetString(tempSlice);
             var temp = double.Parse(tempStr);
+#endif
 
-            if (!result.TryGetValue(name, out var stat))
-            {
-                stat = new Stat();
-                result[name] = stat;
-            }
+            ref Stat stat = ref CollectionsMarshal.GetValueRefOrAddDefault(result, name, out _);
+            stat.Add(temp);
 
             stat.Add(temp);
         }

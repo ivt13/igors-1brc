@@ -4,9 +4,9 @@ I will add other implementations later.
 
 Here's how to build the solution:
 
-dotnet publish --self-contained -f net6.0 -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true -c Release
+dotnet publish --self-contained -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true -c Release -f net6.0
 
-dotnet publish --self-contained -f net8.0 -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true -c Release
+dotnet publish --self-contained -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true /p:UseAppHost=true /p:IncludeNativeLibrariesForSelfExtract=true -c Release -f net8.0
 
 Why Dotnet 6 when Dotnet 8 is avaliable? Because I want to see the performance difference between them.
 
@@ -18,5 +18,5 @@ Results:
 |---------------------------------------------|---------- |-----------|
 | base implementation                         | 3m16.860s | 2m22.885s |
 | method inlining + StringComparer.Ordinal    | 3m15.854s | 2m19.295s |
-| memory-mapped file                          | 1m2.655s  | 0m47.862s |
+| memory-mapped file                          | 3m10.700s | 2m10.776s |
 

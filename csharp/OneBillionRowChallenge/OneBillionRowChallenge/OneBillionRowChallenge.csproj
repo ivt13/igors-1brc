@@ -11,6 +11,7 @@
 	  <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
 	  <PublishSingleFile>true</PublishSingleFile>
 	  <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+	  <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
 </Project>
