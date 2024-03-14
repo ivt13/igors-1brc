@@ -14,9 +14,9 @@ All timing will be done on WSL Ubuntu 22.04 on AMD Ryzen 9 3900X 12 core.
 
 Results:
 
-|        Change                               | net 6     | net 8     |
-|---------------------------------------------|---------- |-----------|
-| base implementation                         | 3m16.860s | 2m22.885s |
-| method inlining + StringComparer.Ordinal    | 3m15.854s | 2m19.295s |
-| memory-mapped file                          | 3m10.700s | 2m10.776s |
-
+|        Change                                     | net 6     | net 8     |
+|---------------------------------------------------|---------- |-----------|
+| base implementation                               | 3m16.860s | 2m22.885s |
+| method inlining + StringComparer.Ordinal          | 3m15.854s | 2m19.295s |
+| memory-mapped file                                | 3m10.700s | 2m10.776s |
+| pointer arithmetic, ReadonlySpan, multithreading  | 0m14.722s | 0m09.693s |
