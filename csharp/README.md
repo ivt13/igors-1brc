@@ -20,3 +20,4 @@ Results:
 | method inlining + StringComparer.Ordinal          | 3m15.854s | 2m19.295s |
 | memory-mapped file                                | 3m10.700s | 2m10.776s |
 | pointer arithmetic, ReadonlySpan, multithreading  | 0m15.413s | 0m10.323s |
+| use ReadOnlySpan<byte> as dictionary key          | 0m12.381s | 0m07.426s |

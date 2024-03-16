@@ -15,7 +15,7 @@ namespace OneBillionRowChallenge
             var filePath = args[0];
             var fileSize = new FileInfo(filePath).Length;
 
-            var result = new Dictionary<string, Stat>(500,StringComparer.Ordinal);
+            var result = new Dictionary<Key, Stat>(500);
 
             using var mmap = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
             using var view = mmap.CreateViewAccessor(0, fileSize, MemoryMappedFileAccess.Read);
@@ -60,7 +60,7 @@ namespace OneBillionRowChallenge
             Console.Write("}");
         }
 
-        private static void Merge(Dictionary<string, Stat> globalResult, ThreadData data)
+        private static void Merge(Dictionary<Key, Stat> globalResult, ThreadData data)
         {
             foreach (var kvp in data.ThreadResult)
             {
@@ -170,17 +170,16 @@ namespace OneBillionRowChallenge
                 var b = span[i];
                 if (b == newLine)
                 {
-                    var line = span.Slice(lineStart, i-lineStart);
-                    HandleLine(ref line,result);
+                    HandleLine(threadData.Ptr+lineStart,i-lineStart,result);
                     lineStart = i+1;
                 }
             }
 
         }
 
-        private static void HandleLine(ref ReadOnlySpan<byte> buffer, Dictionary<string, Stat> result)
+        private static void HandleLine(byte* ptr,int length, Dictionary<Key, Stat> result)
         {
-            if (buffer.IsEmpty)
+            if (length == 0 || ptr == null)
             {
                 return;
             }
@@ -188,19 +187,23 @@ namespace OneBillionRowChallenge
             const byte delimiter = 59; // ;
             var indexOfDelimiter = 0;
 
-            for (var i = 0; i < buffer.Length; ++i)
+            var delimiterPtr = ptr;
+
+            for (var i = 0; i < length; ++i)
             {
-                if (buffer[i] == delimiter)
+                if (*delimiterPtr == delimiter)
                 {
                     indexOfDelimiter = i;
                     break;
                 }
+
+                ++delimiterPtr;
             }
 
             var nextAfterDelimiter = indexOfDelimiter + 1;
             
-            var name = Encoding.UTF8.GetString(buffer.Slice(0, indexOfDelimiter));
-            var tempSlice = buffer.Slice(nextAfterDelimiter);
+            var name = new Key(ptr, indexOfDelimiter);
+            var tempSlice = new ReadOnlySpan<byte>(ptr+nextAfterDelimiter,length-nextAfterDelimiter);
             
 #if NET8_0_OR_GREATER
             var temp = double.Parse(tempSlice);

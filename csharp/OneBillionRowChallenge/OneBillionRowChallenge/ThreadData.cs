@@ -8,6 +8,6 @@ namespace OneBillionRowChallenge
     {
         internal int Length;
         internal byte* Ptr; 
-        internal Dictionary<string, Stat> ThreadResult = new Dictionary<string, Stat>(500,StringComparer.Ordinal);
+        internal Dictionary<Key, Stat> ThreadResult = new Dictionary<Key, Stat>(500);
     }
 }
