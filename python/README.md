@@ -4,7 +4,7 @@ All timing will be done on WSL Ubuntu 22.04 on AMD Ryzen 9 3900X 12 core.
 
 run using:
 
-time python3 onebrc /path/to/measurements-1000000000.txt
+time python3 onebrc.py /path/to/measurements-1000000000.txt
 
 
  |         Change        |      time   |     Python version | 
