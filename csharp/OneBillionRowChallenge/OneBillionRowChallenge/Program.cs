@@ -1,10 +1,10 @@
 ﻿using System.Buffers;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Xml.Linq;
 
 namespace OneBillionRowChallenge
 {
@@ -85,12 +85,13 @@ namespace OneBillionRowChallenge
 
             var bytesPerCore = fileSize / cores;
 
-            var lineLength = (int)bytesPerCore;
+            var partLength = (int)bytesPerCore;
 
-            byte* lineStartPtr = ptr;
+            byte* partStartPtr = ptr;
             byte* fileEndPtr = ptr + fileSize;
 
             ptr += bytesPerCore;
+            var offset = 0;
             
             /* because we don't know how \n's are distributed
              * within the file, each core will process
@@ -100,15 +101,15 @@ namespace OneBillionRowChallenge
             {
                 if (*ptr == 0)
                 {
-                    if (lineStartPtr + lineLength > fileEndPtr)
+                    if (partStartPtr + partLength > fileEndPtr)
                     {
-                        lineLength = TrimLineLngthToEndOfFile(lineStartPtr, lineLength, fileEndPtr);
+                        partLength -= offset;
                     }
 
                     var data = new ThreadData
                     {
-                        Ptr = lineStartPtr,
-                        LineLength = lineLength
+                        Ptr = partStartPtr,
+                        Length = partLength
                     };
                     threadDatas.Add(data);
                     break;
@@ -117,16 +118,16 @@ namespace OneBillionRowChallenge
                 if (*ptr == newLine)
                 {
                     var shouldStop = false;
-                    if (lineStartPtr + lineLength > fileEndPtr)
+                    if (partStartPtr + partLength > fileEndPtr)
                     {
-                        lineLength = TrimLineLngthToEndOfFile(lineStartPtr, lineLength, fileEndPtr);
+                        partLength -= offset;
                         shouldStop = true;
                     }
 
                     var data = new ThreadData
                     {
-                        Ptr = lineStartPtr,
-                        LineLength = lineLength
+                        Ptr = partStartPtr,
+                        Length = partLength
                     };
                     threadDatas.Add(data);
 
@@ -135,24 +136,19 @@ namespace OneBillionRowChallenge
                         break;
                     }
 
-                    lineLength = (int)bytesPerCore;
-                    ptr += lineLength;
-                    lineStartPtr = ptr;
+                    partStartPtr = ptr + 1;
+                    partLength = (int)bytesPerCore;
+                    ptr = partStartPtr + partLength;
                 }
 
                 ++ptr;
-                ++lineLength;
+                ++partLength;
+                ++offset;
             }
 
             return threadDatas;
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int TrimLineLngthToEndOfFile(byte* lineStartPtr, int lineLength, byte* fileEndPtr)
-        {
-            return (int)(lineStartPtr + lineLength - (long)fileEndPtr);
-        }
-
+        
         private static void ThreadRunner(object? dataObject)
         {
             var threadData = dataObject as ThreadData;
@@ -161,7 +157,7 @@ namespace OneBillionRowChallenge
                 return;
             }
 
-            var span = new ReadOnlySpan<byte>(threadData.Ptr, threadData.LineLength);
+            var span = new ReadOnlySpan<byte>(threadData.Ptr, threadData.Length);
 
             const byte newLine = 10; // \n
 
@@ -214,7 +210,7 @@ namespace OneBillionRowChallenge
 #endif
 
             ref var stat = ref CollectionsMarshal.GetValueRefOrAddDefault(result, name, out _);
-            stat.Add(temp);
+            stat.Add(ref temp);
         }
     }
 }

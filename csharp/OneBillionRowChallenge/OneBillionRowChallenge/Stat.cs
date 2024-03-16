@@ -20,7 +20,7 @@ namespace OneBillionRowChallenge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add(double value)
+        public void Add(ref double value)
         {
             if(value < Min) Min = value;
             if(value > Max) Max = value;
