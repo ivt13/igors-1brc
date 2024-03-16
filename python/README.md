@@ -7,6 +7,6 @@ run using:
 time python3 onebrc /path/to/measurements-1000000000.txt
 
 
-|          Change       |      time   |     Python version |
-|-----------------------------------------------------------|
-| base implementation   | 16m57.382s  |     3.10.12        |
+ |         Change        |      time   |     Python version | 
+ |-----------------------|-------------|--------------------|
+ | base implementation   | 16m57.382s  |     3.10.12        |
