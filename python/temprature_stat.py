@@ -9,13 +9,13 @@ class Stat:
 
     
     def add(self,temprature:float):
-        if(temprature < self.min):
+        if temprature < self.min:
             self.min = temprature
-        if(temprature > self.max):
+        if temprature > self.max:
             self.max = temprature
         
         self.sum += temprature
-        self.count = self.count + 1
-    
+        self.count += 1
+            
     def avg(self):
         return self.sum/self.count
