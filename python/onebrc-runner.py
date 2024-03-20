@@ -1,0 +1,3 @@
+import onebrc
+
+onebrc.main()

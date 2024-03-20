@@ -1,21 +1,21 @@
-import sys
+#cython: language_level=3
 
+import cython
+
+@cython.cclass
 class Stat:
 
-    min:float = sys.float_info.max
-    max:float = sys.float_info.min
-    sum:float = 0.0
-    count:int = 0
+    minimum:cython.float
+    maximum:cython.float
+    sum:cython.float 
+    count:cython.int
 
-    
-    def add(self,temprature:float):
-        if temprature < self.min:
-            self.min = temprature
-        if temprature > self.max:
-            self.max = temprature
-        
-        self.sum += temprature
-        self.count += 1
-            
-    def avg(self):
+    def __init__(self):
+        self.minimum = 100000.0
+        self.maximum = -100000.0
+        self.sum = 0.0
+        self.count = 0
+
+    @cython.returns(cython.float)      
+    def avg(self) -> cython.float:
         return self.sum/self.count
