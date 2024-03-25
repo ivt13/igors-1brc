@@ -7,6 +7,7 @@ from queue import Queue
 import multiprocessing
 import sys
 import os
+import platform
 import cython
 from io import TextIOWrapper
 from file_chunk import FileChunk
@@ -78,7 +79,10 @@ def process_file_chunk(file_chunk:FileChunk,queue:Queue):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def main():
-    multiprocessing.set_start_method('fork',force=True)
+    if platform.system() == "Linux":
+        multiprocessing.set_start_method('fork',force=True)    
+    else:
+        multiprocessing.set_start_method('spawn',force=True)    
     multiprocessing.freeze_support()
 
     input_file_path = cython.declare(cython.basestring,sys.argv[1])
@@ -99,10 +103,11 @@ def main():
     
         queue = multiprocessing.Manager().Queue(core_count)
             
-        bytes_per_proc:cython.int = int(file_size / core_count)
+        bytes_per_proc:cython.int = int(file_size / (core_count-1))
         current_file_pos:cython.int = 0
         current_chunk_start:cython.int = 0
         chunk_length:cython.int = bytes_per_proc
+        offset = 0
 
         while 1:
                     
@@ -114,7 +119,6 @@ def main():
                 # if we are going to go past file end, subtract offset
                 # that means the last chunk will be the smallest by a little
                 if current_chunk_start + chunk_length > file_size and core_count > 1:
-                    offset = current_chunk_start + chunk_length - file_size
                     chunk_length -= offset
             
                 file_chunk = FileChunk()
@@ -135,7 +139,6 @@ def main():
                 # if we are going to go past file end, subtract offset
                 # that means the last chunk will be the smallest by a little
                 if current_chunk_start + chunk_length > file_size and core_count > 1:
-                    offset = current_chunk_start + chunk_length - file_size
                     chunk_length -= offset
                     shouldStop = True
             
@@ -157,11 +160,11 @@ def main():
                 chunk_length = bytes_per_proc
                 current_file_pos = current_chunk_start + chunk_length
                 fh.seek(current_file_pos)
-
                 continue
         
             current_file_pos += 1
             chunk_length += 1
+            offset += 1
     
         fh.close()
     
