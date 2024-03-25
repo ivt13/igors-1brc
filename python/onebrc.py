@@ -99,15 +99,16 @@ def main():
             core_count = os.cpu_count()
         # if the file is small enough, just use one core
         if file_size < 1024*1024:
-            core_count = 1
+            core_count = 2
     
         queue = multiprocessing.Manager().Queue(core_count)
             
-        bytes_per_proc:cython.int = int(file_size / (core_count-1))
-        current_file_pos:cython.int = 0
+        bytes_per_proc:cython.int = int(file_size / core_count)
+        current_file_pos:cython.int = bytes_per_proc
         current_chunk_start:cython.int = 0
         chunk_length:cython.int = bytes_per_proc
         offset = 0
+        fh.seek(current_file_pos)
 
         while 1:
                     
@@ -159,7 +160,7 @@ def main():
                 current_chunk_start = current_file_pos + 1
                 chunk_length = bytes_per_proc
                 current_file_pos = current_chunk_start + chunk_length
-                fh.seek(current_file_pos)
+                fh.seek(chunk_length,1) # advance chunk_length bytes relative to current position
                 continue
         
             current_file_pos += 1
