@@ -19,8 +19,12 @@ func handleError(err error) {
 
 func main() {
 	filePath := os.Args[1:][0]
+	Onebrcrunner(&filePath)
+}
 
-	fh, err := os.Open(filePath)
+func Onebrcrunner(filePath *string) {
+
+	fh, err := os.Open(*filePath)
 	handleError(err)
 
 	reader := bufio.NewReader(fh)
