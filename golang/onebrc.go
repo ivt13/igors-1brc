@@ -6,9 +6,15 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"golang.org/x/exp/maps"
 )
+
+const CHANNEL_BUFFER_SIZE int = 10000000
+const NEWLINE byte = '\n'
+const DELIMITER string = ";"
+const BATCH_SIZE int = 10000
 
 func handleError(err error) {
 	if err != nil {
@@ -23,39 +29,23 @@ func main() {
 
 func Onebrcrunner(filePath *string) {
 
-	fh, err := os.Open(*filePath)
-	handleError(err)
-
-	reader := bufio.NewReader(fh)
-
 	result := make(map[string]*Temprature)
+	lineChannel := make(chan []string, CHANNEL_BUFFER_SIZE)
 
-	for {
-
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			break
-		}
-
-		indexOfDelimiter := strings.IndexByte(line, ';')
-
-		name := line[:indexOfDelimiter]
-		temp := customParseFloat(&line, indexOfDelimiter+1)
-
-		handleError(err)
-
-		existingTemprature := result[name]
-
-		if existingTemprature == nil {
-			tPtr := NewTemprature()
-			existingTemprature = &tPtr
-			result[name] = existingTemprature
-		}
-
-		existingTemprature.Add(temp)
-
+	linePool := sync.Pool{
+		New: func() interface{} {
+			ptr := make([]string, BATCH_SIZE)
+			return &ptr
+		},
 	}
-	fh.Close()
+
+	var wg = sync.WaitGroup{}
+	wg.Add(2)
+
+	go fileReader(filePath, &lineChannel, &wg, &linePool)
+	go fileProcessor(&result, &lineChannel, &wg, &linePool)
+
+	wg.Wait()
 
 	fmt.Print("{")
 
@@ -76,6 +66,80 @@ func Onebrcrunner(filePath *string) {
 	}
 
 	fmt.Print("}")
+
+}
+
+func fileReader(filePath *string, lineChannel *chan []string, waitGroup *sync.WaitGroup, linePool *sync.Pool) {
+
+	fh, err := os.Open(*filePath)
+	handleError(err)
+	defer fh.Close()
+	(*waitGroup).Done()
+	defer close(*lineChannel)
+
+	if err != nil {
+		return
+	}
+
+	reader := bufio.NewReader(fh)
+
+	lineBuffer := linePool.Get().(*[]string)
+	index := 0
+
+	for {
+
+		line, err := reader.ReadString(NEWLINE)
+		if err != nil {
+			break
+		}
+
+		(*lineBuffer)[index] = line
+		index++
+
+		if index == BATCH_SIZE {
+			*lineChannel <- *lineBuffer
+			index = 0
+			lineBuffer = linePool.Get().(*[]string)
+		}
+	}
+
+	*lineChannel <- *lineBuffer
+}
+
+func fileProcessor(result *map[string]*Temprature, lineChannel *chan []string, waitGroup *sync.WaitGroup, linePool *sync.Pool) {
+
+	defer (*waitGroup).Done()
+
+	for lines := range *lineChannel {
+
+		length := len(lines)
+
+		for i := 0; i < length; i++ {
+
+			line := lines[i]
+			if line == "" {
+				break
+			}
+
+			indexOfDelimiter := strings.Index(line, DELIMITER)
+
+			name := string(line[:indexOfDelimiter])
+			temp := customParseFloat(&line, indexOfDelimiter+1)
+
+			existingTemperature := (*result)[name]
+
+			if existingTemperature == nil {
+				tPtr := NewTemprature()
+				existingTemperature = &tPtr
+				(*result)[name] = existingTemperature
+			}
+
+			existingTemperature.Add(temp)
+		}
+
+		clearLineBuffer(&lines)
+		linePool.Put(&lines)
+	}
 
 }
 
@@ -105,4 +169,11 @@ func customParseFloat(line *string, startIndex int) float64 {
 	}
 
 	return result
+}
+
+func clearLineBuffer(lines *[]string) {
+	length := len(*lines)
+	for i := 0; i < length; i++ {
+		(*lines)[i] = ""
+	}
 }
