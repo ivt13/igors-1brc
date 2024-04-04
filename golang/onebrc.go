@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -41,9 +40,8 @@ func Onebrcrunner(filePath *string) {
 		indexOfDelimiter := strings.IndexByte(line, ';')
 
 		name := line[:indexOfDelimiter]
-		tempStr := line[indexOfDelimiter+1 : len(line)-1]
+		temp := customParseFloat(&line, indexOfDelimiter+1)
 
-		temp, err := strconv.ParseFloat(tempStr, 64)
 		handleError(err)
 
 		existingTemprature := result[name]
@@ -79,4 +77,32 @@ func Onebrcrunner(filePath *string) {
 
 	fmt.Print("}")
 
+}
+
+func customParseFloat(line *string, startIndex int) float64 {
+
+	result := float64(0)
+	isNegative := false
+	index := startIndex
+
+	if (*line)[index] == '-' {
+		isNegative = true
+		index++
+	}
+
+	result = float64((*line)[index] - '0')
+	index++
+
+	if (*line)[index] != '.' {
+		result = result*10 + float64((*line)[index]-'0')
+		index++
+	}
+
+	index++
+	result += float64((*line)[index]-'0') / 10
+	if isNegative {
+		result *= -1
+	}
+
+	return result
 }
