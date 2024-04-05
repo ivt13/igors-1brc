@@ -204,16 +204,41 @@ namespace OneBillionRowChallenge
             
             var name = new Key(ptr, indexOfDelimiter);
             var tempSlice = new ReadOnlySpan<byte>(ptr+nextAfterDelimiter,length-nextAfterDelimiter);
-            
-#if NET8_0_OR_GREATER
-            var temp = double.Parse(tempSlice);
-#else
-            var tempStr = Encoding.UTF8.GetString(tempSlice);
-            var temp = double.Parse(tempStr);
-#endif
 
+            var temp = ParseFloat(ref tempSlice);
+            
             ref var stat = ref CollectionsMarshal.GetValueRefOrAddDefault(result, name, out _);
             stat.Add(ref temp);
+        }
+
+        private static double ParseFloat(ref ReadOnlySpan<byte> span)
+        {
+            var result = 0.0;
+            var index = 0;
+            var negative = false;
+
+            if (span[index] == '-')
+            {
+                negative = true;
+                ++index;
+            }
+
+            result = span[index] - '0';
+            ++index;
+
+            if (span[index] != '.')
+            {
+                result = result * 10 + span[index] - '0';
+                ++index;
+            }
+
+            ++index;
+            result += ((double)span[index] - '0') / 10;
+            if (negative)
+            {
+                result *= -1f;
+            }
+            return result;
         }
     }
 }
