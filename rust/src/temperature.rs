@@ -18,6 +18,7 @@ impl Default for Temperature {
 
 impl Temperature {
 
+    #[inline(always)]
     pub fn add(&mut self,temp: f64) {
         if temp < self.min {
             self.min = temp;
@@ -31,6 +32,7 @@ impl Temperature {
         self.count = self.count + 1;
     }
 
+    #[inline(always)]
     pub fn avg(&self) -> f64 {
         return self.sum/(self.count as f64);
     }
