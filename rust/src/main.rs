@@ -8,6 +8,39 @@ use std::collections::HashMap;
 
 const DELIMITER:char = ';';
 
+fn custom_float_parsing(input:&String, start_index:usize) -> f64 {
+
+    let mut is_negative = false;
+    let mut index = 0;
+    let input_bytes = input[start_index..].as_bytes();
+
+    let negative_ascii = 45;
+    let dot_ascii = 46;
+    let zero_ascii = 48;
+
+    if input_bytes[index] == negative_ascii {
+        is_negative = true;
+        index += 1;
+    }
+
+    let mut result = (input_bytes[index] - zero_ascii) as f64;
+    index += 1;
+
+    if input_bytes[index] != dot_ascii {
+        result = result*10.0 + (input_bytes[index] - zero_ascii) as f64;
+        index += 1;
+    }
+
+    index += 1;
+    result += (input_bytes[index] - zero_ascii) as f64/10.0;
+
+    if is_negative {
+        result *= -1.0;
+    }
+
+    return result;
+}
+
 fn main() {
 
     let args: Vec<String> = env::args().collect();
@@ -36,9 +69,7 @@ fn main() {
         let delimiter_pos = line_str.find(DELIMITER).unwrap();
 
         let name = line_str[0..delimiter_pos].to_string();
-        let temp_str = line_str[delimiter_pos+1..].to_string();
-        let temp_result = temp_str.parse::<f64>();
-        let temp = temp_result.unwrap();
+        let temp = custom_float_parsing(&line_str, delimiter_pos+1);
 
         let new_struct = Temperature {
                 min: 1000.0,
