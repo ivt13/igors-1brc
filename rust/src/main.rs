@@ -1,18 +1,23 @@
+extern crate memmap2;
+
 mod temperature;
 
+use memmap2::MmapRaw;
 use temperature::Temperature;
 use std::env;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::path::Path;
 
-const DELIMITER:char = ';';
+const DELIMITER:u8 = b';';
+const NEWLINE:u8 = b'\n';
+const BUFFER_LENGTH:usize = 40;
 
-fn custom_float_parsing(input:&String, start_index:usize) -> f64 {
+fn custom_float_parsing(input:&[u8], start_index:usize,end_index:usize) -> f64 {
 
     let mut is_negative = false;
     let mut index = 0;
-    let input_bytes = input[start_index..].as_bytes();
+    let input_bytes = &input[start_index..end_index];
 
     let negative_ascii = 45;
     let dot_ascii = 46;
@@ -50,37 +55,72 @@ fn main() {
         return;
     }
 
-    let file = match File::open(&args[1]) {
-        Err(why) => panic!("couldn't open {}: {}", &args[1], why),
-        Ok(file) => file,
-    };
+    let path = Path::new(&args[1]);
+
+    let file =  OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    let mmap = MmapRaw::map_raw(&file).expect("failed to map the file");
+    let mut mmap_ptr = mmap.as_mut_ptr();
 
     let mut result_map = HashMap::<String,Temperature>::new();
 
-    let reader = BufReader::new(file);
-    
-    for line in reader.lines() {
-        let line_str:String;
-        match line {
-            Ok(line) => line_str = line,
-            Err(err) => panic!("Error reading line {0}",err),
-        }
+    let mut buffer:[u8;BUFFER_LENGTH] = [0;BUFFER_LENGTH];
+    let mut buffer_pos = 0;
 
-        let delimiter_pos = line_str.find(DELIMITER).unwrap();
-
-        let name = line_str[0..delimiter_pos].to_string();
-        let temp = custom_float_parsing(&line_str, delimiter_pos+1);
-
-        let new_struct = Temperature {
-                min: 1000.0,
-                max: -1000.0,
-                sum:0.0,
-                count:0
-            };
-        let temp_struct = result_map.entry(name).or_insert_with(|| new_struct);
+        
+    unsafe
+    {
+        while 1 == 1 {
             
-        temp_struct.add(temp);
+            let mut should_proc_line = false;
+            let mut should_stop = false;
+
+            if mmap_ptr.is_null() || *mmap_ptr == 0 {
+                should_stop = true;
+                should_proc_line = buffer_pos > 0;
+            }    
+
+            if *mmap_ptr == NEWLINE {   
+                should_proc_line = true;
+            }
+
+            if should_proc_line {
+            
+                let delimiter_pos = buffer.iter().position(|&x| x == DELIMITER).unwrap();
+
+                let name = String::from_utf8(buffer[0..delimiter_pos].to_vec()).unwrap();
+                let temp = custom_float_parsing(&buffer, delimiter_pos+1,buffer_pos);
+
+                let new_struct = Temperature {
+                        min: 1000.0,
+                        max: -1000.0,
+                        sum:0.0,
+                        count:0
+                    };
+                let temp_struct = result_map.entry(name).or_insert_with(|| new_struct);
+                    
+                temp_struct.add(temp);
+                clear_line(&mut buffer);
+                buffer_pos = 0;
+                mmap_ptr = mmap_ptr.byte_add(1);
+                
+                if should_stop {
+                    break;
+                }
+                continue;
+            }
+
+            if should_stop {
+                break;
+            }
+
+            buffer[buffer_pos] = *mmap_ptr;
+            buffer_pos += 1;
+            mmap_ptr = mmap_ptr.byte_add(1)
+            
+        }
     }
+
 
     print!("{{");
 
@@ -107,4 +147,15 @@ fn main() {
     print!("}}")
     
 
+}
+
+fn clear_line(buffer:&mut [u8;BUFFER_LENGTH]) -> &mut [u8;BUFFER_LENGTH] {
+
+    let len = buffer.len();
+
+    for i in 0..len {
+        buffer[i] = 0;
+    }
+
+    return buffer;
 }
