@@ -1,4 +1,4 @@
 out/*
 .vs/*
-CMakePresets.json
+*.json
 CMakeLists.txt
