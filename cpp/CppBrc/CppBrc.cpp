@@ -5,7 +5,6 @@
 #include "Temperature.h"
 
 #include <fstream>
-#include <iomanip>
 #include <map>
 #include <string>
 
