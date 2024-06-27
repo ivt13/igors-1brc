@@ -2,7 +2,20 @@
 // or project specific include files.
 
 #pragma once
+#include <cstddef>
+#include <string>
+#include <vector>
 
-#include <iostream>
+const int32_t NotFound = -1;
 
-// TODO: Reference additional headers your program requires here.
+int32_t getIndexOfToken(
+	const std::vector<char>& buffer,
+	const size_t& startPos, 
+	const char& token);
+
+std::string makeString(
+	const std::vector<char>& buffer,
+	const int32_t& start,
+	const int32_t& length);
+
+double customFloatParse(const std::vector<char>& buffer, const size_t& start);

@@ -9,7 +9,8 @@ time ./CppBrc /path/to/measurements-1000000000.txt
 
 Results:
 
- |         Change                                     |      time   | 
- |----------------------------------------------------|-------------|
- | base implementation (MSVC)                         | 3m13.226s   |
- | base implementation (g++ -03)                      | 3m07.985s   |
+ |         Change                                          |      time   | 
+ |---------------------------------------------------------|-------------|
+ | base implementation (MSVC)                              | 3m13.226s   |
+ | base implementation (g++ -03)                           | 3m07.985s   |
+ | memory mapped file using mio + custom float parsing     | 1m53.996s   |
