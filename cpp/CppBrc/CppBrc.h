@@ -18,4 +18,4 @@ std::string makeString(
 	const int32_t& start,
 	const int32_t& length);
 
-double customFloatParse(const std::vector<char>& buffer, const size_t& start);
+double customFloatParse(const std::string_view& temperatureView);

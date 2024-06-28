@@ -24,39 +24,30 @@ int main(int argc, char* argv[])
 
 	mio::mmap_source mmap(argv[1]);
 
-	const auto& delimiter = ';';
-	const auto& newLine = '\n';
+	const auto& delimiterToken = ';';
+	const auto& newLineToken = '\n';
 	
 	std::map<std::string,Temperature> result;
 
-	constexpr size_t BufferSize = 40;
+	auto iter = mmap.begin();
 
-	std::vector<char> buffer;
-
-	const auto fileSize = mmap.length();
-
-	for(size_t i = 0; i < fileSize; ++i)
+	while(iter != mmap.end())
 	{
-		const auto& b = mmap[i];
-		if(b != newLine)
-		{
-			buffer.emplace_back(b);
-			continue;
-		}
+		const auto delimiter = std::ranges::find(iter, std::unreachable_sentinel, delimiterToken);
+		auto name = std::string_view(iter,delimiter);
 
-		const auto indexOfDelimiter = getIndexOfToken(buffer, 0, delimiter);
-		if(indexOfDelimiter == NotFound)
-		{
-			break;
-		}
+		iter = delimiter + 1;
+		const auto newline = std::ranges::find(iter, std::unreachable_sentinel, newLineToken);
 
-		auto name = makeString(buffer, 0, indexOfDelimiter);
-		const auto temperature = customFloatParse(buffer,indexOfDelimiter+1);
+		const auto temperatureView = std::string_view(iter, newline);
+		const auto temperature = customFloatParse(temperatureView);
 
-		auto& temp = result[name];
+		const auto nameStr = std::string(name);
+
+		auto& temp = result[nameStr];
 		temp.add(temperature);
 
-		buffer.clear();
+		iter = newline + 1;
 
 		/*
 		const auto ftellPos = ftell(fh); 
@@ -114,28 +105,28 @@ std::string makeString(
 	return substr;
 }
 
-double customFloatParse(const std::vector<char>& buffer, const size_t& start)
+double customFloatParse(const std::string_view& temperatureView)
 {
-	auto index = start;
+	auto index = 0;
 	auto negative = false;
 
-	if (buffer[index] == '-')
+	if (temperatureView[index] == '-')
 	{
 		negative = true;
 		++index;
 	}
 
-	double result = buffer[index] - '0';
+	double result = temperatureView[index] - '0';
 	++index;
 
-	if (buffer[index] != '.')
+	if (temperatureView[index] != '.')
 	{
-		result = result * 10 + buffer[index] - '0';
+		result = result * 10 + temperatureView[index] - '0';
 		++index;
 	}
 
 	++index;
-	result += static_cast<double>((buffer[index] - '0')) / 10;
+	result += static_cast<double>((temperatureView[index] - '0')) / 10;
 	if (negative)
 	{
 		result *= -1;
