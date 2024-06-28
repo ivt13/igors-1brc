@@ -48,11 +48,6 @@ int main(int argc, char* argv[])
 		temp.add(temperature);
 
 		iter = newline + 1;
-
-		/*
-		const auto ftellPos = ftell(fh); 
-		std::cout << "ftell() " << ftellPos << "; totalbytesRead " << totalBytesRead << "\n";
-		*/
 	}
 
 	mmap.unmap();
