@@ -18,4 +18,4 @@ std::string makeString(
 	const int32_t& start,
 	const int32_t& length);
 
-double customFloatParse(const std::string_view& temperatureView);
+double customFloatParse(mio::mmap_source::const_iterator& iter);

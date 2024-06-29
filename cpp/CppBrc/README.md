@@ -15,3 +15,4 @@ Results:
  | base implementation (g++ -03)                           | 3m07.985s   |
  | memory mapped file using mio + custom float parsing     | 1m53.996s   |
  | using iterators instead of buffer + std::string_view    | 1m42.133s   |
+ | removing use of std::string_view                        | 1m39.245s   |

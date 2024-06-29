@@ -34,15 +34,12 @@ int main(int argc, char* argv[])
 	while(iter != mmap.end())
 	{
 		const auto delimiter = std::ranges::find(iter, std::unreachable_sentinel, delimiterToken);
-		auto name = std::string_view(iter,delimiter);
+		const auto nameStr = std::string(iter,delimiter);
 
 		iter = delimiter + 1;
 		const auto newline = std::ranges::find(iter, std::unreachable_sentinel, newLineToken);
 
-		const auto temperatureView = std::string_view(iter, newline);
-		const auto temperature = customFloatParse(temperatureView);
-
-		const auto nameStr = std::string(name);
+		const auto temperature = customFloatParse(iter);
 
 		auto& temp = result[nameStr];
 		temp.add(temperature);
@@ -100,28 +97,27 @@ std::string makeString(
 	return substr;
 }
 
-double customFloatParse(const std::string_view& temperatureView)
+double customFloatParse(mio::mmap_source::const_iterator& iter)
 {
-	auto index = 0;
 	auto negative = false;
 
-	if (temperatureView[index] == '-')
+	if (*iter == '-')
 	{
 		negative = true;
-		++index;
+		++iter;
 	}
 
-	double result = temperatureView[index] - '0';
-	++index;
+	double result = *iter - '0';
+	++iter;
 
-	if (temperatureView[index] != '.')
+	if (*iter != '.')
 	{
-		result = result * 10 + temperatureView[index] - '0';
-		++index;
+		result = result * 10 + *iter - '0';
+		++iter;
 	}
 
-	++index;
-	result += static_cast<double>((temperatureView[index] - '0')) / 10;
+	++iter;
+	result += static_cast<double>((*iter - '0')) / 10;
 	if (negative)
 	{
 		result *= -1;
