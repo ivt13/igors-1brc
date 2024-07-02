@@ -8,7 +8,7 @@
 #include "CppBrc.h"
 #include "Temperature.h"
 
-
+#include <thread>
 #include <iostream>
 #include <map>
 #include <string>
@@ -22,29 +22,33 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	mio::mmap_source mmap(argv[1]);
+	const auto path = std::string(argv[1]);
+	std::error_code err;
+	auto mmap = mio::make_mmap<mio::shared_mmap_source>(path, 0, mio::map_entire_file,err);
 
-	const auto& delimiterToken = ';';
-	const auto& newLineToken = '\n';
-	
 	std::map<std::string,Temperature> result;
 
-	auto iter = mmap.begin();
+	size_t cores = std::thread::hardware_concurrency();
 
-	while(iter != mmap.end())
+	if(mmap.length() < 10000)
 	{
-		const auto delimiter = std::ranges::find(iter, std::unreachable_sentinel, delimiterToken);
-		const auto nameStr = std::string(iter,delimiter);
+		cores = 1;
+	}
 
-		iter = delimiter + 1;
-		const auto newline = std::ranges::find(iter, std::unreachable_sentinel, newLineToken);
+	const auto fileChunks = splitFile(mmap, cores);
 
-		const auto temperature = customFloatParse(iter);
+	std::vector<std::thread> threads;
 
-		auto& temp = result[nameStr];
-		temp.add(temperature);
+	for(size_t i = 0; i < fileChunks.size(); ++i)
+	{
+		std::thread t(threadProc,fileChunks, i);
+		threads.push_back(std::move(t));
+	}
 
-		iter = newline + 1;
+	for (size_t i = 0; i < threads.size(); ++i)
+	{
+		threads[i].join();
+		mergeFromThread(result, fileChunks[i]->chunkResult);
 	}
 
 	mmap.unmap();
@@ -69,6 +73,56 @@ int main(int argc, char* argv[])
 	std::cout << "}\n";
 
 	return 0;
+}
+
+void threadProc(const std::vector<std::shared_ptr<FileChunk>>& fileChunks, size_t chunkIndex)
+{
+	const auto& fileChunk = fileChunks[chunkIndex];
+
+	auto iter = fileChunk->start;
+	const auto end = fileChunk->end;
+
+	static const auto& delimiterToken = ';';
+	static const auto& newLineToken = '\n';
+
+	auto map = std::make_shared<std::map<std::string,Temperature>>();
+
+	while (iter < end)
+	{
+		if(*iter == 0)
+		{
+			break;
+		}
+
+		const auto delimiter = std::ranges::find(iter, std::unreachable_sentinel, delimiterToken);
+		const auto nameStr = std::string(iter, delimiter);
+
+		iter = delimiter + 1;
+
+		if(*iter == 0)
+		{
+			break;
+		}
+
+		iter = delimiter + 1;
+
+		if (*iter == 0)
+		{
+			break;
+		}
+
+		const auto newline = std::ranges::find(iter, std::unreachable_sentinel, newLineToken);
+
+		const auto temperature = customFloatParse(iter);
+
+		auto& temp = (*map.get())[nameStr];
+		temp.add(temperature);
+
+		iter = newline + 1;
+	}
+
+	fileChunk->chunkResult = map;
+
 }
 
 int32_t getIndexOfToken(const std::vector<char>& buffer, const size_t& startPos, const char& token)
@@ -125,4 +179,69 @@ double customFloatParse(mio::mmap_source::const_iterator& iter)
 
 
 	return result;
+}
+
+std::vector<std::shared_ptr<FileChunk>> splitFile(const mio::basic_shared_mmap<mio::access_mode::read, char>& mmap, const size_t& coreCount)
+{
+	std::vector<std::shared_ptr<FileChunk>> fileChunks;
+
+	auto iter = mmap.begin();
+
+	const auto fileSize = mmap.length();
+	auto chunkSize = fileSize;
+	if(coreCount > 1)
+	{
+		chunkSize = static_cast<size_t>(static_cast<double>(fileSize) / coreCount + 0.5);
+	}
+
+	size_t filePos = 0;
+	size_t currentChunkSize = chunkSize;
+
+	while (iter != mmap.end())
+	{
+		auto chunkStart = iter;
+		auto chunkEnd = iter + currentChunkSize;
+		filePos += currentChunkSize;
+
+		while (*chunkEnd != 0 && *chunkEnd != '\n')
+		{
+			++chunkEnd;
+			++filePos;
+		}
+
+		auto fileChunk = std::make_shared<FileChunk>();
+		fileChunk->start = chunkStart;
+		fileChunk->end = chunkEnd;
+
+		fileChunks.emplace_back(fileChunk);
+
+		if(*chunkEnd == 0)
+		{
+			break;
+		}
+
+		if(filePos + currentChunkSize > fileSize)
+		{
+			const size_t offset = filePos + currentChunkSize - fileSize;
+			currentChunkSize -= offset;
+		}
+
+		iter = chunkEnd + 1;
+	}
+
+
+	return fileChunks;
+}
+
+void mergeFromThread(std::map<std::string, Temperature>& globalResult, const std::shared_ptr<std::map<std::string, Temperature>>& threadResult)
+{
+
+	auto& map = *threadResult;
+
+	for (const auto& [key, value] : map)
+	{
+		auto& globalTemp = globalResult[key];
+		globalTemp.merge(value);
+	}
+
 }

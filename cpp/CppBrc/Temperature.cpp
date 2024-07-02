@@ -28,3 +28,19 @@ double Temperature::avg() const
 {
 	return sum/static_cast<double>(count);
 }
+
+void Temperature::merge(const Temperature& other)
+{
+	if(other.min < min)
+	{
+		min = other.min;
+	}
+
+	if(other.max > max)
+	{
+		max = other.max;
+	}
+
+	sum += other.sum;
+	count += other.count;
+}

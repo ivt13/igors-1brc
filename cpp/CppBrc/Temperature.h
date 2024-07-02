@@ -14,4 +14,5 @@ public:
 
 	void add(const double& temp);
 	double avg() const;
+	void merge(const Temperature& other);
 };
