@@ -17,3 +17,4 @@ Results:
  | using iterators instead of buffer + std::string_view    | 1m42.133s   |
  | removing use of std::string_view                        | 1m39.245s   |
  | making mio compile on Windows + multithreading          | 0m07.488s   |
+ | use std::unordered_map instead of std::map              | 0m04.434s   |

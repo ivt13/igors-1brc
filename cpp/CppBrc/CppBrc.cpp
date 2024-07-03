@@ -10,7 +10,7 @@
 
 #include <thread>
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <string>
 
 
@@ -26,7 +26,8 @@ int main(int argc, char* argv[])
 	std::error_code err;
 	auto mmap = mio::make_mmap<mio::shared_mmap_source>(path, 0, mio::map_entire_file,err);
 
-	std::map<std::string,Temperature> result;
+	std::unordered_map<std::string,Temperature> result;
+	result.reserve(500);
 
 	size_t cores = std::thread::hardware_concurrency();
 
@@ -38,6 +39,7 @@ int main(int argc, char* argv[])
 	const auto fileChunks = splitFile(mmap, cores);
 
 	std::vector<std::thread> threads;
+	threads.reserve(cores);
 
 	for(size_t i = 0; i < fileChunks.size(); ++i)
 	{
@@ -56,11 +58,21 @@ int main(int argc, char* argv[])
 	const auto mapSize = result.size();
 	size_t i = 0;
 
+	std::vector<std::string> keys;
+	keys.reserve(result.size());
+
+	for(const auto& kvp : result)
+	{
+		keys.push_back(kvp.first);
+	}
+
+	std::sort(keys.begin(), keys.end());
 
 	std::cout << "{";
 
-	for (const auto& [key, val] : result)
+	for (const auto& key : keys)
 	{
+		auto val = result[key];
 		std::printf("%s=%.1f/%.1f/%.1f", key.c_str(), val.min, val.avg(), val.max);
 		if(i < mapSize - 1)
 		{
@@ -85,7 +97,8 @@ void threadProc(const std::vector<std::shared_ptr<FileChunk>>& fileChunks, size_
 	static const auto& delimiterToken = ';';
 	static const auto& newLineToken = '\n';
 
-	auto map = std::make_shared<std::map<std::string,Temperature>>();
+	auto map = std::make_shared<std::unordered_map<std::string,Temperature>>();
+	map->reserve(500);
 
 	while (iter < end)
 	{
@@ -233,7 +246,7 @@ std::vector<std::shared_ptr<FileChunk>> splitFile(const mio::basic_shared_mmap<m
 	return fileChunks;
 }
 
-void mergeFromThread(std::map<std::string, Temperature>& globalResult, const std::shared_ptr<std::map<std::string, Temperature>>& threadResult)
+void mergeFromThread(std::unordered_map<std::string, Temperature>& globalResult, const std::shared_ptr<std::unordered_map<std::string, Temperature>>& threadResult)
 {
 
 	auto& map = *threadResult;

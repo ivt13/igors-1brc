@@ -4,6 +4,7 @@
 #pragma once
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "FileChunk.h"
@@ -27,5 +28,5 @@ std::vector<std::shared_ptr<FileChunk>> splitFile(const mio::basic_shared_mmap<m
 void threadProc(const std::vector<std::shared_ptr<FileChunk>>& fileChunks, size_t chunkIndex);
 
 void mergeFromThread(
-	std::map<std::string, Temperature>& globalResult, 
-	const std::shared_ptr<std::map<std::string, Temperature>>&);
+	std::unordered_map<std::string, Temperature>& globalResult, 
+	const std::shared_ptr<std::unordered_map<std::string, Temperature>>&);
