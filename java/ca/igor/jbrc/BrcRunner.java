@@ -19,7 +19,7 @@ public class BrcRunner {
             return;
         }
 
-        var result = new HashMap<String,Temperature>();
+        var result = new HashMap<String,Temperature>(500);
 
         try(var reader = new BufferedReader(new FileReader(args[0])))
         {
@@ -28,9 +28,7 @@ public class BrcRunner {
                 
                 var indexOfDelimiter = indexOfToken(line, 0, DELIMITER);
                 var name = line.substring(0,indexOfDelimiter);
-
-                var temperatureStr = line.substring(indexOfDelimiter+1);
-                var temp = Float.parseFloat(temperatureStr);
+                var temp = customFloatParse(line, indexOfDelimiter+1);
 
                 var existingTemp = result.get(name);
                 if(existingTemp == null)
@@ -70,5 +68,35 @@ public class BrcRunner {
     private static int indexOfToken(String line, int startIndex, char token) {
         var index = line.indexOf(token,startIndex);
         return index;
+    }
+
+    private static float customFloatParse(String input, int startFrom)
+    {
+        var result = 0.0f;
+        var index = startFrom;
+        var negative = false;
+
+        if (input.charAt(index) == '-')
+        {
+            negative = true;
+            ++index;
+        }
+
+        result = input.charAt(index) - '0';
+        ++index;
+
+        if (input.charAt(index) != '.')
+        {
+            result = result * 10 + input.charAt(index) - '0';
+            ++index;
+        }
+
+        ++index;
+        result += ((float)input.charAt(index) - '0') / 10;
+        if (negative)
+        {
+            result *= -1f;
+        }
+        return result;
     }
 }
