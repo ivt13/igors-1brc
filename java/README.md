@@ -12,4 +12,5 @@ Results:
 
  |         Change                                          |    time     | 
  |---------------------------------------------------------|-------------|
- | base implementation                                     |  2m9.244s   |
+ | base implementation                                     |  2m09.244s  |
+ | custom float parsing, one less String allocation        |  1m41.198s  |
