@@ -1,44 +1,62 @@
 package ca.igor.jbrc;
 
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.BufferedReader;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+
 
 
 public class BrcRunner {
 
-    private static final char DELIMITER = ';';
-    private static final char NEWLINE = '\n';
+    private static final byte DELIMITER = ';';
+    private static final byte NEWLINE = '\n';
+    private static final int BUFFER_SIZE = 40; 
 
     public static void main(String[] args) throws IOException {
-        if(args.length < 1)
-        {
+        if(args.length < 1) {
             System.out.println("Missing file path");
             return;
         }
 
+
         var result = new HashMap<String,Temperature>(500);
 
-        try(var reader = new BufferedReader(new FileReader(args[0])))
-        {
-            String line = null;
-            while ((line = reader.readLine()) != null) {
+        var buffer = new byte[BUFFER_SIZE];
+        var bufferPos = 0;
+
+        
+        
+        try(var file = new RandomAccessFile(args[0],"r")) {
+            
+            var filePos = 0L;
+            var fileLength = file.length();
+
+            while(filePos < fileLength) {
+                var segmentLength = fileLength - filePos <= Integer.MAX_VALUE ? fileLength - filePos : Integer.MAX_VALUE; 
+
+                var map = file.getChannel().map(FileChannel.MapMode.READ_ONLY, filePos, segmentLength);
                 
-                var indexOfDelimiter = indexOfToken(line, 0, DELIMITER);
-                var name = line.substring(0,indexOfDelimiter);
-                var temp = customFloatParse(line, indexOfDelimiter+1);
+                for(var i = 0; i < segmentLength; ++i) {
 
-                var existingTemp = result.get(name);
-                if(existingTemp == null)
-                {
-                    existingTemp = new Temperature();
-                    result.put(name, existingTemp);
+                    var b = map.get();
+                    if(b == 0) break;
+
+                    if(b == NEWLINE) {
+                        procLine(result,buffer);
+                        clearBuffer(buffer);
+                        bufferPos = 0;
+                        continue;
+                    }
+
+                    buffer[bufferPos++] = b;
                 }
-                existingTemp.add(temp);
 
+                filePos += segmentLength;
             }
+
+
         }
 
         var keys = result.keySet().toArray();
@@ -46,17 +64,13 @@ public class BrcRunner {
 
         System.out.print("{");
 
-        for(var i = 0; i < keys.length; ++i)
-        {
+        for(var i = 0; i < keys.length; ++i) {
             var name = keys[i];
             var t = result.get(name);
 
-            if(i < keys.length - 1)
-            {
+            if(i < keys.length - 1) {
                 System.out.printf("%s=%.1f/%.1f/%.1f, ", name,t.min,t.avg(),t.max);
-            }
-            else
-            {
+            } else {
                 System.out.printf("%s=%.1f/%.1f/%.1f", name,t.min,t.avg(),t.max);
             }
         }
@@ -65,38 +79,69 @@ public class BrcRunner {
 
     }
 
-    private static int indexOfToken(String line, int startIndex, char token) {
-        var index = line.indexOf(token,startIndex);
-        return index;
+    private static void procLine(HashMap<String,Temperature> result, byte[] buffer)
+    {
+        var indexOfDelimiter = indexOfToken(buffer, 0, DELIMITER);
+        var name = new String(buffer,0,indexOfDelimiter);
+        var temp = customFloatParse(buffer, indexOfDelimiter+1);
+
+        var existingTemp = result.get(name);
+        if(existingTemp == null)
+        {
+            existingTemp = new Temperature();
+            result.put(name, existingTemp);
+        }
+        existingTemp.add(temp);
     }
 
-    private static float customFloatParse(String input, int startFrom)
+    private static void clearBuffer(byte[] buffer)
+    {
+        var len = buffer.length;
+        for(var i = 0; i < len; ++i) {
+            buffer[0] = 0;
+        }
+
+    }
+
+    private static int indexOfToken(byte[] buffer, int startIndex, byte token) {
+        var length = buffer.length;
+        for(var i = 0; i < length; ++i) {
+            if(buffer[i] == token) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static float customFloatParse(byte[] input, int startFrom)
     {
         var result = 0.0f;
         var index = startFrom;
         var negative = false;
 
-        if (input.charAt(index) == '-')
+        if (input[index] == '-')
         {
             negative = true;
             ++index;
         }
 
-        result = input.charAt(index) - '0';
+        result = input[index] - '0';
         ++index;
 
-        if (input.charAt(index) != '.')
+        if (input[index] != '.')
         {
-            result = result * 10 + input.charAt(index) - '0';
+            result = result * 10 + input[index] - '0';
             ++index;
         }
 
         ++index;
-        result += ((float)input.charAt(index) - '0') / 10;
+        result += ((float)input[index] - '0') / 10;
         if (negative)
         {
             result *= -1f;
         }
         return result;
     }
+
+    
 }
