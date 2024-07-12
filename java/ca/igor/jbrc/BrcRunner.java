@@ -1,18 +1,16 @@
 package ca.igor.jbrc;
 
+import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-
 
 
 public class BrcRunner {
 
-    private static final byte DELIMITER = ';';
     private static final byte NEWLINE = '\n';
-    private static final int BUFFER_SIZE = 40; 
 
     public static void main(String[] args) throws IOException {
         if(args.length < 1) {
@@ -22,41 +20,77 @@ public class BrcRunner {
 
 
         var result = new HashMap<String,Temperature>(500);
+        var cores = Runtime.getRuntime().availableProcessors();
 
-        var buffer = new byte[BUFFER_SIZE];
-        var bufferPos = 0;
-
-        
-        
+        var fileChunks = new ArrayList<FileChunk>(cores);
+                
         try(var file = new RandomAccessFile(args[0],"r")) {
             
-            var filePos = 0L;
-            var fileLength = file.length();
+            var fileSize = file.length();
 
-            while(filePos < fileLength) {
-                var segmentLength = fileLength - filePos <= Integer.MAX_VALUE ? fileLength - filePos : Integer.MAX_VALUE; 
-
-                var map = file.getChannel().map(FileChannel.MapMode.READ_ONLY, filePos, segmentLength);
-                
-                for(var i = 0; i < segmentLength; ++i) {
-
-                    var b = map.get();
-                    if(b == 0) break;
-
-                    if(b == NEWLINE) {
-                        procLine(result,buffer);
-                        clearBuffer(buffer);
-                        bufferPos = 0;
-                        continue;
-                    }
-
-                    buffer[bufferPos++] = b;
-                }
-
-                filePos += segmentLength;
+            if(fileSize < 10000)
+            {
+                cores = 1;
             }
 
+            var bytesPerChunk = (long)((double)fileSize/cores + 0.5);
+            var chunkLength = bytesPerChunk;
 
+            var filePtr = file.getFilePointer();
+
+            file.seek(filePtr + chunkLength);   
+
+            while (true) {
+                
+                var shouldStop = false;
+                try {
+                    while(file.readByte() != NEWLINE) {
+                        ++chunkLength;
+                    }
+                } catch(EOFException ex){
+                    shouldStop = true;
+                }
+
+            
+                var fileChunk = new FileChunk();
+                fileChunk.filePath = args[0];
+                fileChunk.start = filePtr;
+                fileChunk.length = chunkLength;
+                fileChunks.add(fileChunk);
+                
+                if(shouldStop) {
+                    break;
+                }
+
+                filePtr += chunkLength + 1;
+                file.seek(filePtr + bytesPerChunk); 
+                chunkLength = bytesPerChunk;
+                               
+                if(filePtr + chunkLength > fileSize) {
+                    var offset = filePtr + chunkLength - fileSize;
+                    chunkLength -= offset;
+                }
+
+            }
+
+        }
+
+        var threads = new ArrayList<Thread>(fileChunks.size());
+
+        for(var fileChunk : fileChunks) {
+            var thread = new Thread(fileChunk);
+            thread.start();
+            threads.add(thread);
+        }
+
+        for(var i = 0; i < fileChunks.size(); ++i) {
+            try {
+                var thread = threads.get(i);
+                thread.join();
+                var fileChunk = fileChunks.get(i);
+                merge(result, fileChunk.fileChunkResult);
+            } catch(InterruptedException ex) {
+            }
         }
 
         var keys = result.keySet().toArray();
@@ -79,68 +113,21 @@ public class BrcRunner {
 
     }
 
-    private static void procLine(HashMap<String,Temperature> result, byte[] buffer)
-    {
-        var indexOfDelimiter = indexOfToken(buffer, 0, DELIMITER);
-        var name = new String(buffer,0,indexOfDelimiter);
-        var temp = customFloatParse(buffer, indexOfDelimiter+1);
+    private static void merge(HashMap<String,Temperature> globalResult, HashMap<String,Temperature> threadResult) {
 
-        var existingTemp = result.get(name);
-        if(existingTemp == null)
-        {
-            existingTemp = new Temperature();
-            result.put(name, existingTemp);
-        }
-        existingTemp.add(temp);
-    }
+        for(var entry : threadResult.entrySet()) {
 
-    private static void clearBuffer(byte[] buffer)
-    {
-        var len = buffer.length;
-        for(var i = 0; i < len; ++i) {
-            buffer[0] = 0;
-        }
-
-    }
-
-    private static int indexOfToken(byte[] buffer, int startIndex, byte token) {
-        var length = buffer.length;
-        for(var i = 0; i < length; ++i) {
-            if(buffer[i] == token) {
-                return i;
+            var key = entry.getKey();
+            var valueFromThread = entry.getValue();
+            var existingValue = globalResult.get(key);
+            if(existingValue == null) {
+                globalResult.put(key, valueFromThread);
+            } else {
+                existingValue.merge(valueFromThread);
             }
-        }
-        return -1;
-    }
 
-    private static float customFloatParse(byte[] input, int startFrom)
-    {
-        var result = 0.0f;
-        var index = startFrom;
-        var negative = false;
-
-        if (input[index] == '-')
-        {
-            negative = true;
-            ++index;
         }
 
-        result = input[index] - '0';
-        ++index;
-
-        if (input[index] != '.')
-        {
-            result = result * 10 + input[index] - '0';
-            ++index;
-        }
-
-        ++index;
-        result += ((float)input[index] - '0') / 10;
-        if (negative)
-        {
-            result *= -1f;
-        }
-        return result;
     }
 
     

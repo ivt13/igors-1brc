@@ -27,4 +27,17 @@ public class Temperature {
     {
         return sum/count;
     }
+
+    public void merge(Temperature other) {
+        if(other.min < min) {
+            min = other.min;
+        }
+
+        if(other.max > max) {
+            max = other.max;
+        }
+
+        sum += other.sum;
+        count += other.count;
+    }
 }
