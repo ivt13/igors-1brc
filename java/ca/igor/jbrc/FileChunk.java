@@ -33,7 +33,7 @@ public class FileChunk implements Runnable {
 
                     if(b == NEWLINE) {
                         procLine(fileChunkResult, buffer);
-                        clearBuffer(buffer);
+                        BufferHelpers.clearBuffer(buffer);
                         bufferPos = 0;
                         continue;
                     }

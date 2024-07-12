@@ -1,2 +1,5 @@
 *.class
 *.json
+.idea/*
+out/*
+*.iml
