@@ -18,3 +18,4 @@ Results:
  | multithreading                                          |  0m09.477s  |
  | using byte[] Wrapper class as key for HashMap           |  0m08.689s  |
  | setting thread priority                                 |  0m08.199s  |
+ | switching to GravaalVM JDK 22 + -Xmx8g                  |  0m07.992s  |
