@@ -89,6 +89,7 @@ public class BrcRunner {
 
         for(var fileChunk : fileChunks) {
             var thread = new Thread(fileChunk);
+            thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
             threads.add(thread);
         }
