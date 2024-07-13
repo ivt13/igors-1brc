@@ -3,6 +3,7 @@ package ca.igor.jbrc;
 
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel.MapMode;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class FileChunk implements Runnable {
@@ -14,7 +15,7 @@ public class FileChunk implements Runnable {
     public String filePath;
     public long start;
     public long length;
-    public HashMap<String,Temperature> fileChunkResult = new HashMap<String,Temperature>(500);
+    public HashMap<ByteArray,Temperature> fileChunkResult = new HashMap<ByteArray,Temperature>(500);
 
     @Override
     public void run() {
@@ -46,14 +47,14 @@ public class FileChunk implements Runnable {
 
     }
     
-    private void procLine(HashMap<String,Temperature> result, byte[] buffer)
+    private void procLine(HashMap<ByteArray,Temperature> result, byte[] buffer)
     {
         if(buffer[0] == 0) {
             return;
         }       
 
         var indexOfDelimiter = indexOfToken(buffer, 0, DELIMITER);
-        var name = new String(buffer,0,indexOfDelimiter);
+        var name = new ByteArray(Arrays.copyOf(buffer,indexOfDelimiter));
         var temp = customFloatParse(buffer, indexOfDelimiter+1);
 
         var existingTemp = result.get(name);
@@ -63,15 +64,6 @@ public class FileChunk implements Runnable {
             result.put(name, existingTemp);
         }
         existingTemp.add(temp);
-    }
-
-    private void clearBuffer(byte[] buffer)
-    {
-        var len = buffer.length;
-        for(var i = 0; i < len; ++i) {
-            buffer[0] = 0;
-        }
-
     }
 
     private int indexOfToken(byte[] buffer, int startIndex, byte token) {

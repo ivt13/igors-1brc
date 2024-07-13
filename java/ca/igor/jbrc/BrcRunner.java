@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.io.RandomAccessFile;
+import java.util.Scanner;
 
 
 public class BrcRunner {
@@ -18,8 +19,17 @@ public class BrcRunner {
             return;
         }
 
+        if(args.length > 1 && args[1].equals("-p")) {
 
-        var result = new HashMap<String,Temperature>(500);
+            var userInput = new Scanner(System.in);
+            while(true) {
+                System.out.println("Press Enter key after profiler is connected.");
+                userInput.nextLine();
+                break;
+            }
+        }
+
+        var result = new HashMap<ByteArray,Temperature>(500);
         var cores = Runtime.getRuntime().availableProcessors();
 
         var fileChunks = new ArrayList<FileChunk>(cores);
@@ -113,7 +123,7 @@ public class BrcRunner {
 
     }
 
-    private static void merge(HashMap<String,Temperature> globalResult, HashMap<String,Temperature> threadResult) {
+    private static void merge(HashMap<ByteArray,Temperature> globalResult, HashMap<ByteArray,Temperature> threadResult) {
 
         for(var entry : threadResult.entrySet()) {
 

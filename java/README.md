@@ -16,3 +16,4 @@ Results:
  | custom float parsing, one less String allocation        |  1m41.198s  |
  | using memory mapped file                                |  1m21.358s  |
  | multithreading                                          |  0m09.477s  |
+ | using byte[] Wrapper class as key for HashMap           |  0m08.689s  |
